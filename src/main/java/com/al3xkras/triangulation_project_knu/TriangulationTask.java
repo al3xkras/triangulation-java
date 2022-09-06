@@ -40,14 +40,17 @@ public class TriangulationTask {
 
     public ArrayList<Triangle2D> triangulate(){
         init();
+        HashSet<Point2D> terminatePoints = new HashSet<>(Arrays.asList(
+                boundaryRectangle[0],boundaryRectangle[1],boundaryRectangle[2],boundaryRectangle[3]
+        ));
         while (debugLoops<debugLoopCount && pointToAddIndex<points.size()){
             debugLoops++;
             Point2D[] iterPoints = borderPointsNext();
 
             Point2D toAdd = points.get(pointToAddIndex);
+            log("toAdd: "+toAdd);
 
-            if (iterPoints[1].equals(boundaryRectangle[0]) ||
-                iterPoints[1].equals(boundaryRectangle[1])){
+            if (terminatePoints.contains(iterPoints[1])){
                 moveForward(1);
                 log("skipped");
                 continue;
@@ -78,6 +81,7 @@ public class TriangulationTask {
                     border.addLast(toAdd);
                     pointToAddIndex++;
                     border.addLast(iterPoints[2]);
+                    moveBackward(1);
                 } else {
                     triangle2D = new Triangle2D(toAdd, iterPoints[1], iterPoints[0]);
                     border.removeFirst();
@@ -86,18 +90,20 @@ public class TriangulationTask {
                     pointToAddIndex++;
                     border.addFirst(iterPoints[1]);
                     border.addFirst(iterPoints[0]);
-                }
-                log("created "+triangle2D);
 
-                log("border after change: "+border);
+                    moveForward(3);
+                }
+
+                convexify();
+
                 triangulation.add(triangle2D);
-                convexify(toAdd);
+                log("created (0): "+triangle2D);
                 log("border after convexifying: "+border);
+            } else {
+                moveForward(1);
             }
 
 
-
-            moveForward(1);
         }
         return triangulation;
     }
@@ -136,36 +142,104 @@ public class TriangulationTask {
         return retVal;
     }
 
-    private void convexify(Point2D toAdd){
-        convexify(border.descendingIterator());
-    }
+    private void convexify(){
+        log("convexify() call");
+        Point2D added = border.getLast();
 
-    private void convexify(Iterator<Point2D> it){
-        Point2D last2;
-        Point2D last=null;
+        Point2D first=null;
         Point2D current=null;
-        LinkedList<Point2D> afterUpdate = new LinkedList<>();
-        while (it.hasNext()) {
-            last2=last;
-            last=current;
-            current = it.next();
-            if (last==null || last2==null)
-                continue;
+        double lastAngle = 0;
 
-            double angle = getAngleBetweenPoints(last2,last,current);
-            log("angle: "+angle);
-            if (angle<180){
-                Triangle2D triangle2D = new Triangle2D(last2,last,current);
-                triangulation.add(triangle2D);
-                log("created: "+triangle2D);
-            } else {
-                afterUpdate.addLast(last);
+        Point2D leftMost=null;
+        Point2D rightMost=null;
+
+        HashSet<Point2D> terminatePoints = new HashSet<>(Arrays.asList(
+                added,boundaryRectangle[0],boundaryRectangle[1],boundaryRectangle[2],boundaryRectangle[3]
+        ));
+
+        ListIterator<Point2D> descending = border.listIterator(border.size()-1);
+        while (descending.hasPrevious()){
+            current = descending.previous();
+            if (first==null){
+                first=current;
                 continue;
             }
+            if (terminatePoints.contains(current))
+                break;
+            if (current.equals(first))
+                break;
+            double angle = getAngleBetweenPoints(first,added,current);
+            log("angle "+Arrays.asList(first,added,current));
+            log("angle: "+angle);
+            if (angle>180)
+                break;
+            if (angle<lastAngle){
+                lastAngle=angle;
+                Triangle2D triangle2D = new Triangle2D(current,added,first);
+                triangulation.add(triangle2D);
+                log("created: "+triangle2D);
+                log("border after change (1): "+border);
+            }
         }
-        it.forEachRemaining(afterUpdate::addLast);
-        afterUpdate.addFirst(current);
-        border=afterUpdate;
+        leftMost=current;
+
+        System.out.println("\n");
+        ListIterator<Point2D> ascending = border.listIterator();
+
+        while ((ascending.hasNext() && (current=ascending.next())!=null && ascending.hasNext())) {
+            System.out.println(current);
+            if (first==null){
+                first=current;
+                continue;
+            }
+            if (terminatePoints.contains(current))
+                break;
+            if (current.equals(first))
+                break;
+            double angle = getAngleBetweenPoints(current,added,first);
+            log("angle "+Arrays.asList(first,added,current));
+            log("angle: "+angle);
+            if (angle>180)
+                break;
+            if (angle>lastAngle){
+                lastAngle=angle;
+                Triangle2D triangle2D = new Triangle2D(first,added,current);
+                triangulation.add(triangle2D);
+                log("created: "+triangle2D);
+                log("border after change (2): "+border);
+
+            } else {
+                break;
+            }
+        }
+        rightMost=current;
+
+        log("leftmost: "+leftMost);
+        log("rightmost: "+rightMost);
+        descending = border.listIterator(border.size()-1);
+        while (descending.hasPrevious()){
+            Point2D p = descending.previous();
+            if (terminatePoints.contains(p))
+                break;
+            if (p.equals(rightMost))
+                break;
+            descending.remove();
+            log("not rightmost: "+p);
+        }
+
+        ascending = border.listIterator();
+        boolean canRemove=false;
+        while ((ascending.hasNext() && (current=ascending.next())!=null && ascending.hasNext())) {
+            if (terminatePoints.contains(current))
+                break;
+            if (!canRemove && current.equals(leftMost)) {
+                canRemove=true;
+                continue;
+            }
+            if (canRemove)
+                ascending.remove();
+            log("not leftmost: "+current);
+        }
     }
 
     private void init(){
