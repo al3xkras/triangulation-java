@@ -9,8 +9,8 @@ import static com.al3xkras.triangulation_project_knu.ProjectUtils.*;
 
 public class TriangulationTask {
 
-    private static final boolean debug = true;
-    private static final int debugLoopCount = 1;
+    boolean debug = false;
+    private static final int debugLoopCount = 10;
     private ArrayList<Point2D> points;
     private final ArrayList<Triangle2D> triangulation = new ArrayList<>();
     private final int rectWidth;
@@ -98,21 +98,9 @@ public class TriangulationTask {
     }
 
     public ArrayList<Triangle2D> triangulate(){
-        //init();
+        init();
 
-        border = new LinkedList<>(Arrays.asList(
-                new Point2D(0,0),
-                new Point2D(3,1),
-                new Point2D(8,3),
-                new Point2D(14,4),
-                new Point2D(15,2),
-                new Point2D(16,0)
-        ));
-        points = new ArrayList<>(Arrays.asList(
-                new Point2D(3,4)));
-
-        while ((!debug || debugLoops<debugLoopCount) && pointToAddIndex<points.size()){
-            debugLoops++;
+        while (pointToAddIndex<points.size()){
 
             Point2D toAdd = points.get(pointToAddIndex);
             Point2D v3 = new Point2D(toAdd.getX(),toAdd.getY()-rectHeight);
@@ -121,14 +109,14 @@ public class TriangulationTask {
             ListIterator<Point2D> listIterator = border.listIterator();
             Point2D first=listIterator.next();
             double lastAngle = ProjectUtils.getAngleBetweenPoints(v3,toAdd,first);
-
-            LinkedList<Point2D> pointsToRemove = new LinkedList<>();
+            if (lastAngle>180)
+                lastAngle=lastAngle-360;
             LinkedList<Point2D> convexHullUpdated = new LinkedList<>();
             convexHullUpdated.addLast(first);
 
             log("add: "+toAdd);
             log("v3: "+v3);
-            double angle=-1;
+            double angle;
             while (listIterator.hasNext()){
                 Point2D next = listIterator.next();
 
@@ -143,17 +131,8 @@ public class TriangulationTask {
                 log(angle);
                 log(next);
 
-                if (!listIterator.hasNext()) {
-                    if (lastAngle>=0 && angle<0){
-                        convexHullUpdated.addLast(toAdd);
-                    }
-                    convexHullUpdated.addLast(next);
-                    break;
-                }
-
                 if (lastAngle>=0 && angle<0){
                     convexHullUpdated.addLast(toAdd);
-                    pointsToRemove.addLast(next);
                     lastAngle=angle;
                 }
                 if (angle>=lastAngle){
@@ -162,21 +141,37 @@ public class TriangulationTask {
                     lastAngle=angle;
                 } else {
                     if (angle<0){
-                        pointsToRemove.addLast(convexHullUpdated.removeLast());
+                        convexHullUpdated.removeLast();
                         convexHullUpdated.addLast(next);
                         lastAngle=angle;
-                    } else {
-                        pointsToRemove.addLast(next);
                     }
                     log("removed");
                 }
             }
 
             log("hull: "+border);
-            log("points to remove: "+pointsToRemove);
             log("updated convex hull: "+convexHullUpdated);
             log("\n\n");
 
+
+            ListIterator<Point2D> iter = border.listIterator();
+            HashSet<Point2D> notRemoved = new HashSet<>(convexHullUpdated);
+            while (iter.hasNext()){
+                Point2D p1 = iter.next();
+                if (!iter.hasNext())
+                    break;
+                Point2D p2 = iter.next();
+                iter.previous();
+
+                if (!notRemoved.contains(p1) || !notRemoved.contains(p2)){
+                    try {
+                        triangulation.add(new Triangle2D(p1,toAdd,p2));
+                    } catch (AssertionError ignored){}
+                }
+            }
+
+            pointToAddIndex++;
+            border=convexHullUpdated;
         }
 
         log(border);
@@ -200,9 +195,10 @@ public class TriangulationTask {
 
 
     private void init(){
-        points.add(boundaryRectangle[2]);
-        points.add(boundaryRectangle[3]);
+        this.points.add(boundaryRectangle[2]);
+        this.points.add(boundaryRectangle[3]);
         this.points.sort(Point2D::compareTo); //O(n*log(n)), quick sort
+        triangulation.add(new Triangle2D(boundaryRectangle[0],points.get(1),boundaryRectangle[1]));
 
         border = new LinkedList<>();
         border.addLast(boundaryRectangle[0]);

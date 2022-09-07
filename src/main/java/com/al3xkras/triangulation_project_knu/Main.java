@@ -16,7 +16,7 @@ public class Main {
         String delimiter=" ";
         String outputFormat = String.join(delimiter,"%.3f","%.3f","%.3f","%.3f","%.3f","%.3f");
 
-        ArrayList<Point2D> points = new ArrayList<>(256);
+        ArrayList<Point2D> points = new ArrayList<>();
         try (BufferedReader br = new BufferedReader(new FileReader(filename))) {
             String line;
             while ((line = br.readLine()) != null) {
@@ -26,17 +26,19 @@ public class Main {
             e.printStackTrace();
         }
         TriangulationTask triangulationTask = new TriangulationTask(points,width,height);
+        if (args.length>4)
+            triangulationTask.debug=Boolean.parseBoolean(args[4]);
         ArrayList<Triangle2D> triangulation = triangulationTask.triangulate();
 
         PrintWriter outputWriter = new PrintWriter(new FileWriter(outputFile));
 
         triangulation.forEach(t-> outputWriter.println(String.format(outputFormat,
-                t.getPoints().get(0).getX(),
                 t.getPoints().get(0).getY(),
-                t.getPoints().get(1).getX(),
+                t.getPoints().get(0).getX(),
                 t.getPoints().get(1).getY(),
-                t.getPoints().get(2).getX(),
-                t.getPoints().get(2).getY())));
+                t.getPoints().get(1).getX(),
+                t.getPoints().get(2).getY(),
+                t.getPoints().get(2).getX())));
         outputWriter.close();
         System.out.println("executed successfully");
     }
