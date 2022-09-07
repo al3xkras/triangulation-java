@@ -34,7 +34,8 @@ public class Point2D implements Comparable<Point2D>{
 
     @Override
     public int compareTo(Point2D o) {
-        return Double.compare(this.y, o.getY());
+        int d =  Double.compare(this.y, o.getY());
+        return d==0?Double.compare(this.getX(),o.getX()):d;
     }
 
     @Override

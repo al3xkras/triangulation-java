@@ -29,7 +29,7 @@ class TriangulationTaskTest {
     void triangulate2() {
         assertTimeoutPreemptively(Duration.ofSeconds(2),()->{
             TriangulationTask triangulationTask = new TriangulationTask(Arrays.asList(
-                    new Point2D(2,2),
+                    new Point2D(9,2),
                     new Point2D(7,1),
                     new Point2D(6,6),
                     new Point2D(7,7),
@@ -42,4 +42,5 @@ class TriangulationTaskTest {
             triangulationTask.triangulate().forEach(System.out::println);
         });
     }
+
 }

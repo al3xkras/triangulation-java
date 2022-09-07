@@ -2,9 +2,11 @@ package com.al3xkras.triangulation_project_knu;
 
 
 import Jama.Matrix;
+import com.al3xkras.triangulation_project_knu.commons.Point2D;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.Arrays;
 
 public class ProjectUtils {
 
@@ -25,16 +27,32 @@ public class ProjectUtils {
         return Math.atan2(det,dot);
     }
 
-    public static boolean between(double x1, double y1, double x2, double y2, double x3, double y3){
-        double alpha = angle(x1,y1,x2,y2);
-        double theta = angle(x1,y1,x3,y3);
-        boolean clockwise=true;
-        if (alpha<0) {
-            clockwise=false;
-            alpha = 2*Math.PI+alpha;
+    public static boolean between(double x1, double y1,
+                                  double x2, double y2,
+                                  double x3, double y3){
+        Matrix lhs = new Matrix(new double[][]{{x1,x2},{y1,y2}});
+        Matrix rhs = new Matrix(new double[]{x3,y3}, 2);
+        Matrix ans;
+        try {
+            ans = lhs.solve(rhs);
+        } catch (RuntimeException e){
+            return false;
         }
-        if (theta<0) theta = 2*Math.PI+theta;
-        return clockwise==(alpha*theta>0 && alpha>theta);
+        double alpha = ans.get(0, 0);
+        double beta = ans.get(1,0);
+        double angle = -angle(x1-x2,y1-y2,x3-x2,y3-y2);
+
+        return (angle>0 & alpha>0 & beta>0) || (angle<0 & alpha<0 & beta<0);
+    }
+
+    public static double getAngleBetweenPoints(Point2D... points){
+        double angle = angle(points[0].getX()-points[1].getX(),
+                points[0].getY()-points[1].getY(),
+                points[2].getX()-points[1].getX(),
+                points[2].getY()-points[1].getY());
+        angle=angle<0?2*Math.PI+angle:angle;
+        angle=angle*180/Math.PI;
+        return angle;
     }
 
 }

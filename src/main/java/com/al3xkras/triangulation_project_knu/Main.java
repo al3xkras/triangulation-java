@@ -14,7 +14,7 @@ public class Main {
         String filename = args[2];
         String outputFile = args[3];
         String delimiter=" ";
-        String outputFormat = String.join(delimiter,"%.3f","%.3f","%.3f");
+        String outputFormat = String.join(delimiter,"%.3f","%.3f","%.3f","%.3f","%.3f","%.3f");
 
         ArrayList<Point2D> points = new ArrayList<>(256);
         try (BufferedReader br = new BufferedReader(new FileReader(filename))) {
@@ -30,8 +30,13 @@ public class Main {
 
         PrintWriter outputWriter = new PrintWriter(new FileWriter(outputFile));
 
-        triangulation.forEach(t-> outputWriter.println(String.format(outputFormat,t.getPoints().get(0),
-                t.getPoints().get(1), t.getPoints().get(2))));
+        triangulation.forEach(t-> outputWriter.println(String.format(outputFormat,
+                t.getPoints().get(0).getX(),
+                t.getPoints().get(0).getY(),
+                t.getPoints().get(1).getX(),
+                t.getPoints().get(1).getY(),
+                t.getPoints().get(2).getX(),
+                t.getPoints().get(2).getY())));
         outputWriter.close();
         System.out.println("executed successfully");
     }

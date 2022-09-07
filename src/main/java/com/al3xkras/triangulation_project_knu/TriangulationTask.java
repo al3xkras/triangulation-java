@@ -10,8 +10,8 @@ import static com.al3xkras.triangulation_project_knu.ProjectUtils.*;
 public class TriangulationTask {
 
     private static final boolean debug = true;
-    private static final int debugLoopCount = 20;
-    private final ArrayList<Point2D> points;
+    private static final int debugLoopCount = 1;
+    private ArrayList<Point2D> points;
     private final ArrayList<Triangle2D> triangulation = new ArrayList<>();
     private final int rectWidth;
     private final int rectHeight;
@@ -21,9 +21,68 @@ public class TriangulationTask {
 
     private LinkedList<Point2D> border;
 
+    private ListIterator<Point2D> convexHullIterator(int i){
+        return new ListIterator<Point2D>() {
+            ListIterator<Point2D> listIterator = border.listIterator(i);
+            @Override
+            public boolean hasNext() {
+                return listIterator.hasNext() || listIterator.hasPrevious();
+            }
+
+            @Override
+            public Point2D next() {
+                if (!hasNext())
+                    throw new NoSuchElementException();
+                if (listIterator.hasNext())
+                    return listIterator.next();
+                listIterator=border.listIterator();
+                return listIterator.next();
+            }
+
+            @Override
+            public boolean hasPrevious() {
+                return listIterator.hasNext() || listIterator.hasPrevious();
+            }
+
+            @Override
+            public Point2D previous() {
+                if (!hasPrevious())
+                    throw new NoSuchElementException();
+                if (listIterator.hasPrevious())
+                    return listIterator.previous();
+                listIterator=border.listIterator(border.size());
+                return listIterator.previous();
+            }
+
+            @Override
+            public int nextIndex() {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public int previousIndex() {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public void remove() {
+                listIterator.remove();
+            }
+
+            @Override
+            public void set(Point2D point2D) {
+                listIterator.set(point2D);
+            }
+
+            @Override
+            public void add(Point2D point2D) {
+                listIterator.add(point2D);
+            }
+        };
+    }
+
     public TriangulationTask(List<Point2D> points, int rectWidth, int rectHeight){
         this.points = new ArrayList<>(points);
-        this.points.sort(Point2D::compareTo); //O(n*log(n)), quick sort
         this.rectWidth=rectWidth;
         this.rectHeight=rectHeight;
         boundaryRectangle[0]=new Point2D(0,0);
@@ -39,72 +98,89 @@ public class TriangulationTask {
     }
 
     public ArrayList<Triangle2D> triangulate(){
-        init();
-        HashSet<Point2D> terminatePoints = new HashSet<>(Arrays.asList(
-                boundaryRectangle[0],boundaryRectangle[1],boundaryRectangle[2],boundaryRectangle[3]
+        //init();
+
+        border = new LinkedList<>(Arrays.asList(
+                new Point2D(0,0),
+                new Point2D(3,1),
+                new Point2D(8,3),
+                new Point2D(14,4),
+                new Point2D(15,2),
+                new Point2D(16,0)
         ));
-        while (debugLoops<debugLoopCount && pointToAddIndex<points.size()){
+        points = new ArrayList<>(Arrays.asList(
+                new Point2D(3,4)));
+
+        while ((!debug || debugLoops<debugLoopCount) && pointToAddIndex<points.size()){
             debugLoops++;
-            Point2D[] iterPoints = borderPointsNext();
 
             Point2D toAdd = points.get(pointToAddIndex);
-            log("toAdd: "+toAdd);
+            Point2D v3 = new Point2D(toAdd.getX(),toAdd.getY()-rectHeight);
+            //pointToAddIndex++;
 
-            if (terminatePoints.contains(iterPoints[1])){
-                moveForward(1);
-                log("skipped");
-                continue;
-            }
+            ListIterator<Point2D> listIterator = border.listIterator();
+            Point2D first=listIterator.next();
+            double lastAngle = ProjectUtils.getAngleBetweenPoints(v3,toAdd,first);
+
+            LinkedList<Point2D> pointsToRemove = new LinkedList<>();
+            LinkedList<Point2D> convexHullUpdated = new LinkedList<>();
+            convexHullUpdated.addLast(first);
+
+            log("add: "+toAdd);
+            log("v3: "+v3);
+            double angle=-1;
+            while (listIterator.hasNext()){
+                Point2D next = listIterator.next();
 
 
-            log(Arrays.toString(iterPoints));
-            log("border: "+border);
-            log("\n\n");
+                angle = ProjectUtils.getAngleBetweenPoints(v3,toAdd,next);
 
-            if (!between(iterPoints[0].getX()-iterPoints[1].getX(),
-                    iterPoints[0].getY()-iterPoints[1].getY(),
-                    iterPoints[2].getX()-iterPoints[1].getX(),
-                    iterPoints[2].getY()-iterPoints[1].getY(),
-                    toAdd.getX()-iterPoints[1].getX(),
-                    toAdd.getY()-iterPoints[1].getY())){
-                log("point "+toAdd+" is outside of the angle");
+                if (angle>180)
+                    angle=angle-360;
 
-                double angle1 = getAngleBetweenPoints(iterPoints[2],iterPoints[1],toAdd);
-                double angle2 = getAngleBetweenPoints(toAdd,iterPoints[1],iterPoints[0]);
+                log("\n");
+                log(lastAngle);
+                log(angle);
+                log(next);
 
-                log("angles: "+angle1+" "+angle2);
-
-                Triangle2D triangle2D;
-                if (angle1<=angle2){
-                    triangle2D = new Triangle2D(iterPoints[1], toAdd, iterPoints[2]);
-                    border.removeLast();
-                    border.addLast(toAdd);
-                    pointToAddIndex++;
-                    border.addLast(iterPoints[2]);
-                    moveBackward(1);
-                } else {
-                    triangle2D = new Triangle2D(toAdd, iterPoints[1], iterPoints[0]);
-                    border.removeFirst();
-                    border.removeFirst();
-                    border.addFirst(toAdd);
-                    pointToAddIndex++;
-                    border.addFirst(iterPoints[1]);
-                    border.addFirst(iterPoints[0]);
-
-                    moveForward(3);
+                if (!listIterator.hasNext()) {
+                    if (lastAngle>=0 && angle<0){
+                        convexHullUpdated.addLast(toAdd);
+                    }
+                    convexHullUpdated.addLast(next);
+                    break;
                 }
 
-                convexify();
-
-                triangulation.add(triangle2D);
-                log("created (0): "+triangle2D);
-                log("border after convexifying: "+border);
-            } else {
-                moveForward(1);
+                if (lastAngle>=0 && angle<0){
+                    convexHullUpdated.addLast(toAdd);
+                    pointsToRemove.addLast(next);
+                    lastAngle=angle;
+                }
+                if (angle>=lastAngle){
+                    convexHullUpdated.addLast(next);
+                    log("added");
+                    lastAngle=angle;
+                } else {
+                    if (angle<0){
+                        pointsToRemove.addLast(convexHullUpdated.removeLast());
+                        convexHullUpdated.addLast(next);
+                        lastAngle=angle;
+                    } else {
+                        pointsToRemove.addLast(next);
+                    }
+                    log("removed");
+                }
             }
 
+            log("hull: "+border);
+            log("points to remove: "+pointsToRemove);
+            log("updated convex hull: "+convexHullUpdated);
+            log("\n\n");
 
         }
+
+        log(border);
+
         return triangulation;
     }
 
@@ -121,136 +197,18 @@ public class TriangulationTask {
         }
     }
 
-    double getAngleBetweenPoints(Point2D... points){
-        double angle = angle(points[0].getX()-points[1].getX(),
-                points[0].getY()-points[1].getY(),
-                points[2].getX()-points[1].getX(),
-                points[2].getY()-points[1].getY());
-        angle=angle<0?2*Math.PI+angle:angle;
-        angle=angle*180/Math.PI;
-        return angle;
-    }
 
-    public Point2D[] borderPointsNext(){
-        Point2D[] retVal = new Point2D[]{
-                border.removeFirst(),
-                border.removeFirst(),
-                border.getFirst()
-        };
-        border.addFirst(retVal[1]);
-        border.addFirst(retVal[0]);
-        return retVal;
-    }
-
-    private void convexify(){
-        log("convexify() call");
-        Point2D added = border.getLast();
-
-        Point2D first=null;
-        Point2D current=null;
-        double lastAngle = 0;
-
-        Point2D leftMost=null;
-        Point2D rightMost=null;
-
-        HashSet<Point2D> terminatePoints = new HashSet<>(Arrays.asList(
-                added,boundaryRectangle[0],boundaryRectangle[1],boundaryRectangle[2],boundaryRectangle[3]
-        ));
-
-        ListIterator<Point2D> descending = border.listIterator(border.size()-1);
-        while (descending.hasPrevious()){
-            current = descending.previous();
-            if (first==null){
-                first=current;
-                continue;
-            }
-            if (terminatePoints.contains(current))
-                break;
-            if (current.equals(first))
-                break;
-            double angle = getAngleBetweenPoints(first,added,current);
-            log("angle "+Arrays.asList(first,added,current));
-            log("angle: "+angle);
-            if (angle>180)
-                break;
-            if (angle<lastAngle){
-                lastAngle=angle;
-                Triangle2D triangle2D = new Triangle2D(current,added,first);
-                triangulation.add(triangle2D);
-                log("created: "+triangle2D);
-                log("border after change (1): "+border);
-            }
-        }
-        leftMost=current;
-
-        System.out.println("\n");
-        ListIterator<Point2D> ascending = border.listIterator();
-
-        while ((ascending.hasNext() && (current=ascending.next())!=null && ascending.hasNext())) {
-            System.out.println(current);
-            if (first==null){
-                first=current;
-                continue;
-            }
-            if (terminatePoints.contains(current))
-                break;
-            if (current.equals(first))
-                break;
-            double angle = getAngleBetweenPoints(current,added,first);
-            log("angle "+Arrays.asList(first,added,current));
-            log("angle: "+angle);
-            if (angle>180)
-                break;
-            if (angle>lastAngle){
-                lastAngle=angle;
-                Triangle2D triangle2D = new Triangle2D(first,added,current);
-                triangulation.add(triangle2D);
-                log("created: "+triangle2D);
-                log("border after change (2): "+border);
-
-            } else {
-                break;
-            }
-        }
-        rightMost=current;
-
-        log("leftmost: "+leftMost);
-        log("rightmost: "+rightMost);
-        descending = border.listIterator(border.size()-1);
-        while (descending.hasPrevious()){
-            Point2D p = descending.previous();
-            if (terminatePoints.contains(p))
-                break;
-            if (p.equals(rightMost))
-                break;
-            descending.remove();
-            log("not rightmost: "+p);
-        }
-
-        ascending = border.listIterator();
-        boolean canRemove=false;
-        while ((ascending.hasNext() && (current=ascending.next())!=null && ascending.hasNext())) {
-            if (terminatePoints.contains(current))
-                break;
-            if (!canRemove && current.equals(leftMost)) {
-                canRemove=true;
-                continue;
-            }
-            if (canRemove)
-                ascending.remove();
-            log("not leftmost: "+current);
-        }
-    }
 
     private void init(){
         points.add(boundaryRectangle[2]);
         points.add(boundaryRectangle[3]);
+        this.points.sort(Point2D::compareTo); //O(n*log(n)), quick sort
 
         border = new LinkedList<>();
-        border.addLast(boundaryRectangle[1]);
+        border.addLast(boundaryRectangle[0]);
         border.addLast(points.get(pointToAddIndex));
         pointToAddIndex++;
-        border.addLast(boundaryRectangle[0]);
+        border.addLast(boundaryRectangle[1]);
     }
 
 }
