@@ -163,7 +163,8 @@ public class TriangulationTask {
                 Point2D p2 = iter.next();
                 iter.previous();
 
-                if (!notRemoved.contains(p1) || !notRemoved.contains(p2)){
+                if (!notRemoved.contains(p1) || !notRemoved.contains(p2) ||
+                        (!(pointToAddIndex==1) && getAngleBetweenPoints(toAdd,p1,p2)<180)){
                     try {
                         triangulation.add(new Triangle2D(p1,toAdd,p2));
                     } catch (AssertionError ignored){}
@@ -195,6 +196,7 @@ public class TriangulationTask {
 
 
     private void init(){
+        this.points.add(boundaryRectangle[3]);
         this.points.add(boundaryRectangle[2]);
         this.points.add(boundaryRectangle[3]);
         this.points.sort(Point2D::compareTo); //O(n*log(n)), quick sort
