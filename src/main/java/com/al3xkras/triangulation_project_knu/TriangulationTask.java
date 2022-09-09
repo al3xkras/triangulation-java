@@ -21,66 +21,6 @@ public class TriangulationTask {
 
     private LinkedList<Point2D> border;
 
-    private ListIterator<Point2D> convexHullIterator(int i){
-        return new ListIterator<Point2D>() {
-            ListIterator<Point2D> listIterator = border.listIterator(i);
-            @Override
-            public boolean hasNext() {
-                return listIterator.hasNext() || listIterator.hasPrevious();
-            }
-
-            @Override
-            public Point2D next() {
-                if (!hasNext())
-                    throw new NoSuchElementException();
-                if (listIterator.hasNext())
-                    return listIterator.next();
-                listIterator=border.listIterator();
-                return listIterator.next();
-            }
-
-            @Override
-            public boolean hasPrevious() {
-                return listIterator.hasNext() || listIterator.hasPrevious();
-            }
-
-            @Override
-            public Point2D previous() {
-                if (!hasPrevious())
-                    throw new NoSuchElementException();
-                if (listIterator.hasPrevious())
-                    return listIterator.previous();
-                listIterator=border.listIterator(border.size());
-                return listIterator.previous();
-            }
-
-            @Override
-            public int nextIndex() {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public int previousIndex() {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public void remove() {
-                listIterator.remove();
-            }
-
-            @Override
-            public void set(Point2D point2D) {
-                listIterator.set(point2D);
-            }
-
-            @Override
-            public void add(Point2D point2D) {
-                listIterator.add(point2D);
-            }
-        };
-    }
-
     public TriangulationTask(List<Point2D> points, int rectWidth, int rectHeight){
         this.points = new ArrayList<>(points);
         this.rectWidth=rectWidth;
@@ -100,10 +40,27 @@ public class TriangulationTask {
     public ArrayList<Triangle2D> triangulate(){
         init();
 
+        Point2D p1 = points.get(1);
+
+        double a0 = getAngleBetweenPoints(p1,points.get(0),border.getFirst());
+        double a1 = getAngleBetweenPoints(border.getLast(),points.get(0),p1);
+        if (a0<=180 || a1<=180){
+            if (a0>a1){
+                triangulation.add(new Triangle2D(border.getFirst(),p1,points.get(0)));
+            } else {
+                triangulation.add(new Triangle2D(points.get(0),p1,border.getLast()));
+            }
+        }
+
+        System.out.println(a0);
+        System.out.println(a1);
+
         while (pointToAddIndex<points.size()){
 
             Point2D toAdd = points.get(pointToAddIndex);
             Point2D v3 = new Point2D(toAdd.getX(),toAdd.getY()-rectHeight);
+
+
             //pointToAddIndex++;
 
             ListIterator<Point2D> listIterator = border.listIterator();
@@ -157,16 +114,16 @@ public class TriangulationTask {
             ListIterator<Point2D> iter = border.listIterator();
             HashSet<Point2D> notRemoved = new HashSet<>(convexHullUpdated);
             while (iter.hasNext()){
-                Point2D p1 = iter.next();
+                Point2D p = iter.next();
                 if (!iter.hasNext())
                     break;
                 Point2D p2 = iter.next();
                 iter.previous();
 
-                if (!notRemoved.contains(p1) || !notRemoved.contains(p2) ||
-                        (!(pointToAddIndex==1) && getAngleBetweenPoints(toAdd,p1,p2)<180)){
+                if (!notRemoved.contains(p) || !notRemoved.contains(p2) ||
+                        (!(pointToAddIndex==1) && getAngleBetweenPoints(toAdd,p,p2)<180)){
                     try {
-                        triangulation.add(new Triangle2D(p1,toAdd,p2));
+                        triangulation.add(new Triangle2D(p,toAdd,p2));
                     } catch (AssertionError ignored){}
                 }
             }
@@ -198,9 +155,8 @@ public class TriangulationTask {
     private void init(){
         this.points.add(boundaryRectangle[3]);
         this.points.add(boundaryRectangle[2]);
-        this.points.add(boundaryRectangle[3]);
         this.points.sort(Point2D::compareTo); //O(n*log(n)), quick sort
-        triangulation.add(new Triangle2D(boundaryRectangle[0],points.get(1),boundaryRectangle[1]));
+        triangulation.add(new Triangle2D(boundaryRectangle[0],points.get(pointToAddIndex),boundaryRectangle[1]));
 
         border = new LinkedList<>();
         border.addLast(boundaryRectangle[0]);

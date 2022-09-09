@@ -6,6 +6,8 @@ public class Point2D implements Comparable<Point2D>{
     private double x;
     private double y;
 
+    private static final double eps = 1e-3;
+
     public Point2D(double... doubles){
         this.x=doubles[0];
         this.y=doubles[1];
