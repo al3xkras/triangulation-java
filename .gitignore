@@ -13,3 +13,5 @@ target/
 
 /python/points.txt
 /python/triangulation.txt
+/python/.ipynb_checkpoints
+/python/to_markdown.txt

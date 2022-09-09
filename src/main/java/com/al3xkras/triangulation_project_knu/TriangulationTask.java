@@ -44,7 +44,7 @@ public class TriangulationTask {
 
         double a0 = getAngleBetweenPoints(p1,points.get(0),border.getFirst());
         double a1 = getAngleBetweenPoints(border.getLast(),points.get(0),p1);
-        if (a0<=180 || a1<=180){
+        if (points.size()>2 && a0<=180 || a1<=180){
             if (a0>a1){
                 triangulation.add(new Triangle2D(border.getFirst(),p1,points.get(0)));
             } else {
